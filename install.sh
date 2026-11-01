@@ -143,6 +143,12 @@ chmod +x scripts/install-mihomo.sh
 ./scripts/install-mihomo.sh
 print_success "Mihomo установлен"
 
+# Шаг 10.5: Установка Hermes AI
+print_header "🤖 Шаг 10.5: Установка Hermes AI"
+chmod +x scripts/install-hermes.sh
+./scripts/install-hermes.sh
+print_success "Hermes AI установлен"
+
 # Шаг 11: Настройка звука
 print_header "🎵 Шаг 11: Настройка звука"
 chmod +x scripts/setup-audio.sh

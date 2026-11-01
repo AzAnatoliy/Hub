@@ -10,10 +10,11 @@ import SmartHomeSection from './components/SmartHomeSection';
 import NetworkSection from './components/NetworkSection';
 import SettingsSection from './components/SettingsSection';
 import MonitorSection from './components/MonitorSection';
+import HermesSection from './components/HermesSection';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 
-export type Section = 'dashboard' | 'video' | 'music' | 'photo' | 'games' | 'cameras' | 'smarthome' | 'network' | 'monitor' | 'settings';
+export type Section = 'dashboard' | 'video' | 'music' | 'photo' | 'games' | 'cameras' | 'smarthome' | 'network' | 'monitor' | 'hermes' | 'settings';
 
 function App() {
   const [currentSection, setCurrentSection] = useState<Section>('dashboard');
@@ -30,6 +31,7 @@ function App() {
       case 'smarthome': return <SmartHomeSection />;
       case 'network': return <NetworkSection />;
       case 'monitor': return <MonitorSection />;
+      case 'hermes': return <HermesSection />;
       case 'settings': return <SettingsSection darkMode={darkMode} setDarkMode={setDarkMode} />;
       default: return <Dashboard onNavigate={setCurrentSection} />;
     }

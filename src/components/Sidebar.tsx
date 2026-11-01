@@ -1,4 +1,4 @@
-import { Home, Film, Music, Gamepad2, Camera, HomeIcon, Wifi, Settings, ImageIcon, Activity } from 'lucide-react';
+import { Home, Film, Music, Gamepad2, Camera, HomeIcon, Wifi, Settings, ImageIcon, Activity, Bot } from 'lucide-react';
 import type { Section } from '../App';
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ const menuItems: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'games', label: 'Игры', icon: <Gamepad2 className="w-5 h-5" /> },
   { id: 'cameras', label: 'Камеры', icon: <Camera className="w-5 h-5" /> },
   { id: 'smarthome', label: 'Умный дом', icon: <HomeIcon className="w-5 h-5" /> },
+  { id: 'hermes', label: 'Hermes AI', icon: <Bot className="w-5 h-5" /> },
   { id: 'network', label: 'Сеть', icon: <Wifi className="w-5 h-5" /> },
   { id: 'monitor', label: 'Монитор', icon: <Activity className="w-5 h-5" /> },
   { id: 'settings', label: 'Настройки', icon: <Settings className="w-5 h-5" /> },
