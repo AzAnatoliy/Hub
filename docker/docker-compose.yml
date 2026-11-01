@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # Jellyfin - медиасервер
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - /home/media:/media:ro
+    ports:
+      - "8096:8096"
+      - "8920:8920"
+      - "7359:7359/udp"
+      - "1900:1900/udp"
+    restart: unless-stopped
+    devices:
+      - /dev/dri:/dev/dri  # Intel VA-API
+    mem_limit: 512m
+
+  # Sonarr - управление сериалами
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - ./sonarr:/config
+      - /home/media/tv:/tv
+      - /home/media/downloads:/downloads
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+    mem_limit: 300m
+
+  # Radarr - управление фильмами
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - ./radarr:/config
+      - /home/media/movies:/movies
+      - /home/media/downloads:/downloads
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+    mem_limit: 300m
+
+  # AdGuard Home - DNS фильтрация
+  adguardhome:
+    image: adguard/adguardhome:latest
+    container_name: adguardhome
+    volumes:
+      - ./adguard/work:/opt/adguardhome/work
+      - ./adguard/conf:/opt/adguardhome/conf
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "3000:80/tcp"
+      - "3001:443/tcp"
+    restart: unless-stopped
+    mem_limit: 200m
+
+  # Home Assistant - умный дом
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    environment:
+      - TZ=Europe/Moscow
+    volumes:
+      - ./homeassistant:/config
+      - /run/dbus:/run/dbus:ro
+    ports:
+      - "8123:8123"
+    restart: unless-stopped
+    privileged: true
+    mem_limit: 600m
+
+  # Go2RTC - видеонаблюдение
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: go2rtc
+    network_mode: host
+    volumes:
+      - ./go2rtc:/config
+      - /home/media/recordings:/recordings
+    restart: unless-stopped
+    mem_limit: 100m
+
+  # Watchtower - автообновление контейнеров
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *  # Обновление в 4:00
+      - TZ=Europe/Moscow
+    restart: unless-stopped
+    mem_limit: 50m
