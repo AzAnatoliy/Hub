@@ -44,7 +44,7 @@
 
 ### 🖥️ Интерфейс
 - **Веб-панель**: Адаптивный дизайн для ТВ и мобильных
-- **Управление**: Пульт ДУ (CEC), геймпад, клавиатура
+- **Управление**: Пульт ДУ (CEC с USB-адаптером), геймпад, клавиатура
 - **Мониторинг**: Графики CPU, RAM, сети в реальном времени
 
 ## 📊 Системные требования
@@ -69,7 +69,8 @@
 
 ```bash
 # Скачайте Linux Mint XFCE
-wget https://mirror.yandex.ru/linuxmint-pdf/stable/22/linuxmint-22-xfce-64bit.iso
+# https://linuxmint.com/edition.php?id=313
+# Проверьте контрольную сумму!
 
 # Запишите на USB (замените /dev/sdX)
 sudo dd if=linuxmint-22-xfce-64bit.iso of=/dev/sdX bs=4M status=progress
@@ -83,88 +84,67 @@ sudo dd if=linuxmint-22-xfce-64bit.iso of=/dev/sdX bs=4M status=progress
 ### 2. Клонирование проекта
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/media-hub.git
-cd media-hub
+git clone https://github.com/YOUR_USERNAME/Hub.git
+cd Hub
 ```
 
 ### 3. Установка зависимостей
 
 ```bash
-# Системные пакеты
-sudo apt update
-sudo apt install -y \
-  modemmanager network-manager-gnome \
-  alsa-utils mpv va-driver-all \
-  qbittorrent retroarch \
-  docker.io docker-compose
-
-# Node.js зависимости
-npm install
+# ВАЖНО: НЕ запускайте от root!
+chmod +x install.sh
+./install.sh
 ```
 
-### 4. Настройка модема
+### 4. Настройка .env
 
 ```bash
-# Проверьте подключение модема
-mmcli -L
-
-# Создайте подключение (замените APN)
-sudo nmcli connection add type gsm ifname '*' conname 'Mobile' apn 'internet.mts.ru'
-sudo nmcli connection up 'Mobile'
+# Отредактируйте .env и укажите свои данные
+nano .env
 ```
 
 ### 5. Настройка прокси Mihomo
 
 ```bash
-# Запустите скрипт установки
-chmod +x scripts/install-mihomo.sh
-./scripts/install-mihomo.sh
-
-# Отредактируйте конфиг
+# Отредактируйте конфиг (замените данные прокси)
 sudo nano /etc/mihomo/config.yaml
+
+# Перезапустите сервис
+sudo systemctl restart mihomo
 ```
 
-### 6. Развертывание Docker-контейнеров
-
-```bash
-cd docker
-docker-compose up -d
-
-# Проверьте статус
-docker ps
-```
-
-### 7. Настройка звука
+### 6. Настройка USB ЦАП
 
 ```bash
 # Найдите USB ЦАП
 aplay -l
+cat /proc/asound/cards
 
-# Создайте конфиг (замените card number)
-./scripts/setup-audio.sh
+# Отредактируйте ~/.asoundrc (используйте имя устройства)
+nano ~/.asoundrc
 ```
 
-### 8. Сборка веб-интерфейса
+### 7. Настройка IP-камер
 
 ```bash
-npm run build
+# Отредактируйте конфиг Go2RTC
+nano configs/go2rtc/go2rtc.yaml
 
-# Запустите локальный сервер
-cd dist
-python3 -m http.server 8080
+# Укажите RTSP ссылки на ваши камеры
+# Перезапустите контейнер
+cd docker && docker compose restart go2rtc
 ```
 
-### 9. Автозагрузка
+### 8. Перезагрузка
 
 ```bash
-# Настройте автозапуск оболочки
-./scripts/setup-autostart.sh
+sudo reboot
 ```
 
 ## 📁 Структура проекта
 
 ```
-media-hub/
+Hub/
 ├── src/                    # Исходный код веб-интерфейса
 │   ├── components/         # React компоненты
 │   ├── App.tsx            # Главный компонент
@@ -173,13 +153,18 @@ media-hub/
 │   └── docker-compose.yml
 ├── scripts/               # Скрипты установки
 │   ├── install-mihomo.sh
+│   ├── install-hermes.sh
 │   ├── setup-audio.sh
 │   └── setup-autostart.sh
 ├── configs/               # Примеры конфигураций
 │   ├── mihomo/
-│   ├── alsa/
+│   ├── go2rtc/
 │   └── mpv/
-├── dist/                  # Production сборка
+├── docs/                  # Документация
+├── dist/                  # Production сборка (создается npm run build)
+├── data/                  # Данные контейнеров (создается автоматически)
+├── .env                   # Переменные окружения (НЕ коммитить!)
+├── .env.example           # Пример .env
 ├── package.json
 ├── README.md
 └── LICENSE
@@ -199,31 +184,45 @@ media-hub/
 - **Игры**: Библиотека Steam и эмуляторов
 - **Камеры**: Видеонаблюдение с записью по движению
 - **Умный дом**: Управление устройствами Home Assistant
+- **Hermes AI**: Голосовой ассистент
 - **Сеть**: Статус модема, прокси, DNS
 - **Монитор**: Графики ресурсов в реальном времени
 - **Настройки**: Конфигурация системы
 
 ### Управление
 
-- **Пульт ДУ**: Через HDMI CEC
+- **Пульт ДУ**: Через USB CEC адаптер (HDMI на ноутбуках не поддерживает CEC!)
 - **Геймпад**: Эмуляция мыши/клавиатуры
 - **Мобильный**: Доступ с любого устройства в сети
 - **Клавиатура**: Беспроводная с тачпадом
 
 ## 🔧 Конфигурация
 
+### Переменные окружения (.env)
+
+```bash
+# Скопируйте пример
+cp .env.example .env
+
+# Отредактируйте
+nano .env
+```
+
+Основные параметры:
+- `PUID/PGID` - ID пользователя и группы
+- `MEDIA_DIR` - директория с медиа-файлами
+- `LAN_IP` - IP для привязки портов (127.0.0.1 для безопасности)
+- `HA_TOKEN` - токен Home Assistant
+- `CAM1_RTSP/CAM2_RTSP` - RTSP ссылки на камеры
+
 ### Прокси Mihomo
 
 Отредактируйте `/etc/mihomo/config.yaml`:
 
 ```yaml
-mixed-port: 7890
-allow-lan: true
-mode: rule
-log-level: info
-
+# Замените на свои данные прокси
 proxies:
-  - name: "NL-01"
+  - name: "proxy-1"
     type: vless
     server: your-server.com
     port: 443
@@ -233,16 +232,20 @@ proxies:
 
 ### Docker контейнеры
 
-Отредактируйте `docker/docker-compose.yml` для изменения путей и портов.
+Порты привязаны к `127.0.0.1` для безопасности. Для доступа из сети измените `LAN_IP` в `.env`.
 
 ### Звук
 
-Отредактируйте `~/.asoundrc` для выбора USB ЦАП:
+Используйте **имя устройства** вместо номера (номер может меняться):
 
-```
+```bash
+# Посмотрите имена
+cat /proc/asound/cards
+
+# Используйте имя в ~/.asoundrc
 pcm.!default {
     type hw
-    card 1  # Номер из aplay -l
+    card "Pro"  # Имя из /proc/asound/cards
     device 0
 }
 ```
@@ -260,13 +263,37 @@ Docker (база)                ~0.2 ГБ
 ├── Jellyfin                 ~0.4 ГБ
 ├── Sonarr                   ~0.25 ГБ
 ├── Radarr                   ~0.25 ГБ
+├── qBittorrent              ~0.2 ГБ
 ├── AdGuard Home             ~0.15 ГБ
 ├── Go2RTC                   ~0.05 ГБ
 └── Home Assistant           ~0.5 ГБ
 ─────────────────────────────────────
-ИТОГО:                       ~4.0 ГБ
-Свободно:                    ~4.0 ГБ
+ИТОГО:                       ~4.2 ГБ
+Свободно:                    ~3.8 ГБ
 ```
+
+## 🔒 Безопасность
+
+### Firewall
+
+Docker публикует порты **в обход UFW**! Поэтому:
+
+1. Порты привязаны к `127.0.0.1` в `docker-compose.yml`
+2. Для доступа из сети измените `LAN_IP` в `.env` на ваш IP
+3. **НЕ используйте `0.0.0.0`** без дополнительной защиты
+
+### Секреты
+
+- **НЕ коммитьте `.env`** (уже в `.gitignore`)
+- **НЕ коммитьте `configs/mihomo/config.yaml`** (содержит пароли)
+- **НЕ коммитьте `configs/go2rtc/go2rtc.yaml`** (содержит пароли камер)
+- Используйте `.env.example` как шаблон
+
+### Обновления
+
+- Watchtower **НЕ используется** (обновления вручную)
+- Образы закреплены по версиям (не `:latest`)
+- Обновляйте вручную: `docker compose pull && docker compose up -d`
 
 ## 🛠️ Разработка
 
@@ -279,35 +306,33 @@ npm run build
 
 # Проверка типов
 npm run typecheck
+
+# Линтинг
+npm run lint
 ```
 
 ## 📝 Полезные команды
 
 ```bash
 # Статус сервисов
-systemctl status mihomo
+systemctl --user status media-hub-web
+sudo systemctl status mihomo
 docker ps
 
 # Логи
-journalctl -u mihomo -f
+journalctl --user -u media-hub-web -f
+sudo journalctl -u mihomo -f
 docker logs jellyfin -f
 
 # Перезапуск
+systemctl --user restart media-hub-web
 sudo systemctl restart mihomo
-docker-compose restart
+cd docker && docker compose restart
 
 # Обновление системы
 sudo apt update && sudo apt upgrade -y
-docker-compose pull && docker-compose up -d
+cd docker && docker compose pull && docker compose up -d
 ```
-
-## 🔒 Безопасность
-
-- Измените стандартные пароли в Docker контейнерах
-- Настройте firewall (ufw)
-- Используйте SSH ключи вместо паролей
-- Регулярно обновляйте систему
-- Делайте бэкапы конфигураций
 
 ## 📦 Клонирование системы
 
@@ -326,6 +351,8 @@ sudo timeshift --restore
 
 Pull requests приветствуются! Для крупных изменений сначала откройте issue для обсуждения.
 
+См. [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## 📄 Лицензия
 
 MIT License - см. [LICENSE](LICENSE)
@@ -338,11 +365,25 @@ MIT License - см. [LICENSE](LICENSE)
 - [RetroArch](https://www.retroarch.com/)
 - [Mihomo](https://github.com/MetaCubeX/mihomo)
 - [AdGuard Home](https://adguard.com/adguard-home/overview.html)
+- [Go2RTC](https://github.com/AlexxIT/go2rtc)
+- [OpenAI Whisper](https://github.com/openai/whisper)
 
 ## 📞 Поддержка
 
-- GitHub Issues: [Создать issue](https://github.com/YOUR_USERNAME/media-hub/issues)
-- Документация: [Wiki](https://github.com/YOUR_USERNAME/media-hub/wiki)
+- GitHub Issues: [Создать issue](https://github.com/YOUR_USERNAME/Hub/issues)
+- Документация: [Wiki](https://github.com/YOUR_USERNAME/Hub/wiki)
+
+## ⚠️ Известные ограничения
+
+1. **HDMI CEC**: На обычных ноутбуках HDMI не пропускает CEC сигналы. Нужен USB-адаптер Pulse-Eight или аналог.
+
+2. **USB ЦАП**: Номер карты может меняться после перезагрузки. Используйте имя устройства из `/proc/asound/cards`.
+
+3. **Docker + UFW**: Docker публикует порты в обход UFW. Порты привязаны к 127.0.0.1 для безопасности.
+
+4. **AdGuard Home**: При первом запуске мастер настройки слушает порт 3000 внутри контейнера. Доступ: http://localhost:3000
+
+5. **mpv на X11**: Используется `gpu-context=auto` для совместимости с X11 (Linux Mint).
 
 ---
 

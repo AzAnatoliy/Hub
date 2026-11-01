@@ -38,19 +38,22 @@ function App() {
   };
 
   return (
-    <div className={`${darkMode ? 'dark' : ''}`}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white overflow-hidden relative">
+    <div className={darkMode ? 'dark' : 'light'}>
+      <div className={`min-h-screen ${
+        darkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white' 
+          : 'bg-gradient-to-br from-gray-100 via-white to-gray-100 text-gray-900'
+      } overflow-hidden relative`}>
         {/* Animated Background */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-          <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-pink-500/3 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+          <div className={`absolute -top-40 -right-40 w-80 h-80 ${darkMode ? 'bg-blue-500/5' : 'bg-blue-500/10'} rounded-full blur-3xl animate-pulse`} />
+          <div className={`absolute -bottom-40 -left-40 w-80 h-80 ${darkMode ? 'bg-purple-500/5' : 'bg-purple-500/10'} rounded-full blur-3xl animate-pulse`} style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative z-10">
-          <TopBar />
+          <TopBar darkMode={darkMode} />
           <div className="flex h-[calc(100vh-64px)]">
-            <Sidebar currentSection={currentSection} onNavigate={setCurrentSection} />
+            <Sidebar currentSection={currentSection} onNavigate={setCurrentSection} darkMode={darkMode} />
             <main className="flex-1 overflow-y-auto p-6">
               <AnimatePresence mode="wait">
                 <motion.div

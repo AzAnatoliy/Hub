@@ -2,8 +2,17 @@
 
 # Настройка автозапуска веб-оболочки
 # Использование: chmod +x setup-autostart.sh && ./setup-autostart.sh
+# ВАЖНО: Запускайте от имени пользователя, НЕ от root!
 
 set -e
+
+if [ "$EUID" -eq 0 ]; then
+    echo "❌ НЕ запускайте от root! Запустите: ./setup-autostart.sh"
+    exit 1
+fi
+
+REAL_USER=$USER
+REAL_HOME=$HOME
 
 echo "🚀 Настройка автозапуска веб-оболочки..."
 
@@ -13,55 +22,61 @@ if [ ! -d "dist" ]; then
     exit 1
 fi
 
-# Создание директории для веб-интерфейса
-WEB_DIR="/var/www/media-hub"
+# Создание директории для веб-интерфейса в домашней папке пользователя
+WEB_DIR="$REAL_HOME/.local/share/media-hub"
 echo "📁 Создание директории: $WEB_DIR"
-sudo mkdir -p "$WEB_DIR"
-sudo cp -r dist/* "$WEB_DIR/"
-sudo chown -R $USER:$USER "$WEB_DIR"
+mkdir -p "$WEB_DIR"
+cp -r dist/* "$WEB_DIR/"
 
-# Создание systemd сервиса для веб-сервера
-echo "🔧 Создание systemd сервиса..."
-sudo tee /etc/systemd/system/media-hub-web.service > /dev/null << EOF
+# Создание systemd сервиса для веб-сервера (от имени пользователя)
+echo "🔧 Создание systemd сервиса пользователя..."
+mkdir -p "$REAL_HOME/.config/systemd/user"
+
+cat > "$REAL_HOME/.config/systemd/user/media-hub-web.service" << EOF
 [Unit]
 Description=Media Hub Web Interface
 After=network.target
 
 [Service]
 Type=simple
-User=$USER
+User=$REAL_USER
 WorkingDirectory=$WEB_DIR
-ExecStart=/usr/bin/python3 -m http.server 8080 --bind 0.0.0.0
+ExecStart=/usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
 Restart=on-failure
 RestartSec=5s
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 EOF
 
-# Активация сервиса
+# Активация сервиса пользователя
 echo "🚀 Активация веб-сервера..."
-sudo systemctl daemon-reload
-sudo systemctl enable media-hub-web
-sudo systemctl start media-hub-web
+systemctl --user daemon-reload
+systemctl --user enable media-hub-web
+systemctl --user start media-hub-web
+
+# Включаем linger для работы без входа в систему
+sudo loginctl enable-linger $REAL_USER
 
 # Создание .desktop файла для автозапуска браузера
 echo "🌐 Настройка автозапуска браузера..."
-mkdir -p ~/.config/autostart
+mkdir -p "$REAL_HOME/.config/autostart"
 
-cat > ~/.config/autostart/media-hub.desktop << EOF
+cat > "$REAL_HOME/.config/autostart/media-hub.desktop" << EOF
 [Desktop Entry]
 Type=Application
 Name=Media Hub
 Comment=Media Hub Web Interface
-Exec=firefox --kiosk http://localhost:8080
+Exec=$REAL_HOME/.local/bin/start-media-hub.sh
 X-GNOME-Autostart-enabled=true
 Terminal=false
 StartupNotify=false
 EOF
 
 # Создание скрипта для запуска в полноэкранном режиме
-cat > ~/start-media-hub.sh << 'EOF'
+mkdir -p "$REAL_HOME/.local/bin"
+
+cat > "$REAL_HOME/.local/bin/start-media-hub.sh" << 'EOF'
 #!/bin/bash
 # Запуск Media Hub в полноэкранном режиме
 
@@ -69,7 +84,7 @@ cat > ~/start-media-hub.sh << 'EOF'
 sleep 5
 
 # Проверка доступности
-if curl -s http://localhost:8080 > /dev/null; then
+if curl -s http://127.0.0.1:8080 > /dev/null; then
     echo "✅ Media Hub доступен"
 else
     echo "❌ Media Hub недоступен"
@@ -77,7 +92,7 @@ else
 fi
 
 # Запуск браузера в режиме киоска
-firefox --kiosk http://localhost:8080 &
+firefox --kiosk http://127.0.0.1:8080 &
 
 # Скрыть курсор мыши (опционально)
 if command -v unclutter &> /dev/null; then
@@ -87,17 +102,19 @@ fi
 echo "🎯 Media Hub запущен!"
 EOF
 
-chmod +x ~/start-media-hub.sh
+chmod +x "$REAL_HOME/.local/bin/start-media-hub.sh"
 
 # Создание ярлыка на рабочем столе
-DESKTOP_FILE=~/Desktop/Media\ Hub.desktop
+DESKTOP_FILE="$REAL_HOME/Desktop/Media Hub.desktop"
+mkdir -p "$REAL_HOME/Desktop"
+
 cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
 Name=Media Hub
 Comment=Media Hub Control Panel
-Exec=$HOME/start-media-hub.sh
+Exec=$REAL_HOME/.local/bin/start-media-hub.sh
 Icon=applications-multimedia
 Terminal=false
 Categories=AudioVideo;Player;
@@ -105,17 +122,21 @@ EOF
 
 chmod +x "$DESKTOP_FILE"
 
-# Настройка CEC (управление пультом через HDMI)
-echo "📺 Настройка HDMI CEC..."
-if ! command -v cec-client &> /dev/null; then
-    echo "📦 Установка libcec..."
-    sudo apt install -y cec-utils
-fi
+# Настройка CEC (предупреждение о совместимости)
+echo ""
+echo "📺 HDMI CEC:"
+echo "⚠️  ВНИМАНИЕ: HDMI на обычных ноутбуках НЕ пропускает CEC сигналы!"
+echo "   Для управления пультом нужен USB-адаптер Pulse-Eight или аналог."
+echo "   Документация: https://www.pulse-eight.com/p/104-usb-hdmi-cec-adapter"
+echo ""
 
-# Создание скрипта для CEC
-cat > ~/cec-control.sh << 'EOF'
+# Если есть USB CEC адаптер
+if command -v cec-client &> /dev/null; then
+    echo "✅ cec-client найден"
+    
+    cat > "$REAL_HOME/.local/bin/cec-control.sh" << 'EOF'
 #!/bin/bash
-# Управление через HDMI CEC
+# Управление через HDMI CEC (только с USB-адаптером!)
 
 # Активация TV
 echo "on 0" | cec-client -s -d 1
@@ -124,24 +145,26 @@ echo "on 0" | cec-client -s -d 1
 echo "as" | cec-client -s -d 1
 
 # Запуск браузера
-~/start-media-hub.sh
+~/.local/bin/start-media-hub.sh
 EOF
-
-chmod +x ~/cec-control.sh
+    
+    chmod +x "$REAL_HOME/.local/bin/cec-control.sh"
+else
+    echo "📦 Для CEC установите: sudo apt install cec-utils"
+    echo "   И подключите USB CEC адаптер"
+fi
 
 echo ""
 echo "✅ Настройка автозапуска завершена!"
 echo ""
 echo "📋 Полезные команды:"
-echo "  systemctl status media-hub-web     # Статус веб-сервера"
-echo "  systemctl restart media-hub-web    # Перезапуск"
-echo "  ~/start-media-hub.sh               # Запуск вручную"
-echo "  ~/cec-control.sh                   # Запуск с HDMI CEC"
+echo "  systemctl --user status media-hub-web     # Статус веб-сервера"
+echo "  systemctl --user restart media-hub-web    # Перезапуск"
+echo "  ~/.local/bin/start-media-hub.sh           # Запуск вручную"
 echo ""
 echo "🌐 Веб-интерфейс доступен:"
-echo "  http://localhost:8080              # Локально"
-echo "  http://<IP-адрес>:8080             # Из сети"
+echo "  http://127.0.0.1:8080                     # Локально"
 echo ""
-echo "🔧 Настройка firewall (опционально):"
-echo "  sudo ufw allow 8080/tcp            # Открыть порт"
+echo "⚠️  Порт привязан к 127.0.0.1 (безопасно)"
+echo "   Для доступа из сети измените --bind в сервисе"
 echo ""
