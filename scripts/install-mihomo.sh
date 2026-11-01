@@ -1,22 +1,23 @@
 #!/bin/bash
 
-# Установка Mihomo прокси
+# Установка Mihomo прокси (Россия)
 # Использование: chmod +x install-mihomo.sh && ./install-mihomo.sh
+# ВАЖНО: НЕ запускайте от root!
 
 set -e
 
-echo "🚀 Установка Mihomo прокси..."
-
-# Проверка прав root
-if [ "$EUID" -ne 0 ]; then
-    echo "❌ Запустите скрипт с правами root: sudo $0"
+if [ "$EUID" -eq 0 ]; then
+    echo "❌ НЕ запускайте от root!"
     exit 1
 fi
 
+echo "🚀 Установка Mihomo прокси..."
+
 # Создание директорий
 echo "📁 Создание директорий..."
-mkdir -p /etc/mihomo
-mkdir -p /var/log/mihomo
+sudo mkdir -p /etc/mihomo
+sudo mkdir -p /var/log/mihomo
+sudo chown $USER:$USER /etc/mihomo
 
 # Скачивание последней версии
 echo "📥 Скачивание Mihomo..."
@@ -26,83 +27,29 @@ wget -q "https://github.com/MetaCubeX/mihomo/releases/download/${VERSION}/mihomo
 # Распаковка
 echo "📦 Распаковка..."
 gunzip -f /tmp/mihomo.gz
-mv /tmp/mihomo /usr/local/bin/mihomo
-chmod +x /usr/local/bin/mihomo
+sudo mv /tmp/mihomo /usr/local/bin/mihomo
+sudo chmod +x /usr/local/bin/mihomo
 
-# Создание конфигурации по умолчанию
+# Создание конфигурации (копирование из example)
 echo "⚙️  Создание конфигурации..."
-cat > /etc/mihomo/config.yaml << 'EOF'
-# Mihomo конфигурация
-# Документация: https://wiki.metacubex.one/
+if [ ! -f /etc/mihomo/config.yaml ]; then
+    if [ -f "configs/mihomo/config.yaml.example" ]; then
+        sudo cp configs/mihomo/config.yaml.example /etc/mihomo/config.yaml
+        echo "✅ Конфигурация скопирована из configs/mihomo/config.yaml.example"
+    else
+        echo "⚠️  configs/mihomo/config.yaml.example не найден"
+        echo "   Создайте конфигурацию вручную: sudo nano /etc/mihomo/config.yaml"
+    fi
+else
+    echo "ℹ️  Конфигурация уже существует: /etc/mihomo/config.yaml"
+fi
 
-mixed-port: 7890
-allow-lan: true
-bind-address: '*'
-mode: rule
-log-level: info
-ipv6: false
-
-# DNS настройки
-dns:
-  enable: true
-  listen: 0.0.0.0:1053
-  ipv6: false
-  default-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-  enhanced-mode: fake-ip
-  fake-ip-range: 198.18.0.1/16
-  fake-ip-filter:
-    - '*.lan'
-    - localhost.ptlogin2.qq.com
-  nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
-  fallback:
-    - https://dns.cloudflare.com/dns-query
-    - https://dns.google/dns-query
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
-    ipcidr:
-      - 240.0.0.0/4
-
-# Пример прокси-сервера (замените на свои данные)
-proxies:
-  - name: "example-vless"
-    type: vless
-    server: your-server.com
-    port: 443
-    uuid: your-uuid-here
-    network: ws
-    tls: true
-    udp: true
-    ws-opts:
-      path: /path
-      headers:
-        Host: your-server.com
-
-# Правила маршрутизации
-proxy-groups:
-  - name: "Proxy"
-    type: select
-    proxies:
-      - example-vless
-      - DIRECT
-
-rules:
-  # Китайские домены -> прямой доступ
-  - GEOIP,CN,DIRECT
-  # Остальное -> через прокси
-  - MATCH,Proxy
-EOF
-
-echo "✅ Конфигурация создана: /etc/mihomo/config.yaml"
-echo "⚠️  Отредактируйте файл и укажите свои данные прокси!"
+echo "⚠️  Отредактируйте /etc/mihomo/config.yaml и укажите свои данные прокси!"
+echo "   ВАЖНО: Настройте authentication и external-controller!"
 
 # Создание systemd сервиса
 echo "🔧 Создание systemd сервиса..."
-cat > /etc/systemd/system/mihomo.service << 'EOF'
+sudo tee /etc/systemd/system/mihomo.service > /dev/null << 'EOF'
 [Unit]
 Description=Mihomo Proxy Service
 Documentation=https://wiki.metacubex.one/
@@ -127,22 +74,27 @@ EOF
 
 # Активация сервиса
 echo "🚀 Активация сервиса..."
-systemctl daemon-reload
-systemctl enable mihomo
-systemctl start mihomo
+sudo systemctl daemon-reload
+sudo systemctl enable mihomo
+sudo systemctl start mihomo
 
 # Проверка статуса
 echo ""
 echo "✅ Установка завершена!"
 echo ""
 echo "📋 Полезные команды:"
-echo "  systemctl status mihomo     # Статус сервиса"
-echo "  systemctl restart mihomo    # Перезапуск"
-echo "  journalctl -u mihomo -f     # Логи"
+echo "  sudo systemctl status mihomo     # Статус сервиса"
+echo "  sudo systemctl restart mihomo    # Перезапуск"
+echo "  sudo journalctl -u mihomo -f     # Логи"
 echo ""
-echo "🌐 Веб-интерфейс:"
-echo "  http://127.0.0.1:9090/ui    # Yacd面板"
+echo "🌐 Веб-интерфейс (если настроен external-controller):"
+echo "  http://127.0.0.1:9090/ui         # Yacd/Metacubexd панель"
 echo ""
 echo "⚙️  Настройка:"
 echo "  sudo nano /etc/mihomo/config.yaml"
+echo ""
+echo "🔒 Безопасность:"
+echo "  - Настройте authentication для LAN доступа"
+echo "  - Настройте secret для панели управления"
+echo "  - external-controller привязан к 127.0.0.1"
 echo ""

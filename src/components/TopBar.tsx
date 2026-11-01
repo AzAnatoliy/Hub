@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Wifi, Signal, Shield, Thermometer, Clock, Bell, X } from 'lucide-react';
 
-export default function TopBar() {
+interface TopBarProps {
+  darkMode?: boolean;
+}
+
+export default function TopBar({ darkMode = true }: TopBarProps) {
   const [time, setTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [modemStatus] = useState({ connected: true, operator: 'МТС', signal: 78, network: '4G LTE' });
