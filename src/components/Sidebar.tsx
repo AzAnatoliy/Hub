@@ -1,4 +1,4 @@
-import { Home, Film, Music, Gamepad2, Camera, HomeIcon, Wifi, Settings } from 'lucide-react';
+import { Home, Film, Music, Gamepad2, Camera, HomeIcon, Wifi, Settings, ImageIcon, Activity } from 'lucide-react';
 import type { Section } from '../App';
 
 interface SidebarProps {
@@ -10,16 +10,18 @@ const menuItems: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Главная', icon: <Home className="w-5 h-5" /> },
   { id: 'video', label: 'Видео', icon: <Film className="w-5 h-5" /> },
   { id: 'music', label: 'Музыка', icon: <Music className="w-5 h-5" /> },
+  { id: 'photo', label: 'Фото', icon: <ImageIcon className="w-5 h-5" /> },
   { id: 'games', label: 'Игры', icon: <Gamepad2 className="w-5 h-5" /> },
   { id: 'cameras', label: 'Камеры', icon: <Camera className="w-5 h-5" /> },
   { id: 'smarthome', label: 'Умный дом', icon: <HomeIcon className="w-5 h-5" /> },
   { id: 'network', label: 'Сеть', icon: <Wifi className="w-5 h-5" /> },
+  { id: 'monitor', label: 'Монитор', icon: <Activity className="w-5 h-5" /> },
   { id: 'settings', label: 'Настройки', icon: <Settings className="w-5 h-5" /> },
 ];
 
 export default function Sidebar({ currentSection, onNavigate }: SidebarProps) {
   return (
-    <nav className="w-20 bg-gray-900/50 backdrop-blur-sm border-r border-gray-700/30 flex flex-col items-center py-4 gap-2">
+    <nav className="w-20 bg-gray-900/50 backdrop-blur-sm border-r border-gray-700/30 flex flex-col items-center py-4 gap-2 overflow-y-auto">
       {menuItems.map(item => (
         <button
           key={item.id}
